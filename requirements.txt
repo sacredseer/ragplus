@@ -1,0 +1,14 @@
+streamlit>=1.39.0
+requests>=2.32.0
+protobuf==3.20.3
+PyMuPDF>=1.24.0
+pandas>=2.1.0
+scikit-learn>=1.5.0
+tavily-python>=0.3.0
+watchfiles==1.2.0
+wcwidth==0.6.0
+websocket-client==1.9.0
+websockets==16.0
+xxhash==3.6.0
+yarl==1.23.0
+zstandard==0.25.0
