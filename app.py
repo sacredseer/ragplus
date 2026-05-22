@@ -260,7 +260,7 @@ with st.sidebar:
         cfg_ollama_url = st.text_input(
             "LLM Endpoint URL",
             value=cfg["OLLAMA_API_URL"],
-            help="Generate endpoint for your Ollama / OpenAI-compatible LLM server.",
+            help="Generate endpoint for your Ollama server. If you provide a base Ollama URL like https://ollama.com/v1, the app will append /api/generate automatically.",
         )
         cfg_llm_api_version = st.text_input(
             "LLM API Version",

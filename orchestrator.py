@@ -77,16 +77,21 @@ class AgenticRAGOrchestrator:
                 trace.append("  Web search is not configured (TAVILY_API_KEY missing).")
                 if not document_chunks:
                     return self._no_result(_NO_DOCS_NO_WEB_MSG, trace)
-                return self._no_result(_NO_RESULTS_MSG, trace)
 
-            web_results = self._websearch.search(resolved)
-            if not web_results:
-                trace.append("  Web search returned no results.")
-                return self._no_result(_NO_DOCS_WEB_FAIL_MSG if not document_chunks else _NO_RESULTS_MSG, trace)
-
-            final_chunks = web_results
-            from_web = True
-            trace.append(f"  Web search returned {len(web_results)} result(s).")
+                trace.append("  Web search unavailable; falling back to direct LLM answer from document chunks.")
+                final_chunks = document_chunks[:6]
+            else:
+                web_results = self._websearch.search(resolved)
+                if not web_results:
+                    trace.append("  Web search returned no results.")
+                    if not document_chunks:
+                        return self._no_result(_NO_DOCS_WEB_FAIL_MSG, trace)
+                    trace.append("  Falling back to direct LLM answer from document chunks.")
+                    final_chunks = document_chunks[:6]
+                else:
+                    final_chunks = web_results
+                    from_web = True
+                    trace.append(f"  Web search returned {len(web_results)} result(s).")
         else:
             trace.append("Stage 4 — Web Search Agent: skipped (document results are sufficient).")
 

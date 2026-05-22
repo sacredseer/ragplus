@@ -2,6 +2,7 @@ import os
 import logging
 import requests
 import json
+from urllib.parse import urlparse, urlunparse
 from requests.exceptions import JSONDecodeError
 
 logger = logging.getLogger(__name__)
@@ -20,9 +21,24 @@ def _cfg(key: str) -> str:
     return os.environ.get(key, _DEFAULTS.get(key, "")).strip()
 
 
+def _normalize_llm_url(url: str) -> str:
+    parsed = urlparse(url)
+    path = parsed.path.rstrip("/")
+    if not path or path == "/":
+        if "ollama" in parsed.netloc:
+            path = "/api/generate"
+    elif path == "/v1":
+        if "ollama" in parsed.netloc:
+            path = "/api/generate"
+    if path != parsed.path:
+        parsed = parsed._replace(path=path)
+    return urlunparse(parsed)
+
+
 def call_llm(prompt: str, system: str = None) -> str:
     """Send a prompt to the Ollama API and return the full response text."""
     ollama_api_url = _cfg("OLLAMA_API_URL") or _DEFAULTS["OLLAMA_API_URL"]
+    ollama_api_url = _normalize_llm_url(ollama_api_url)
     model_name = _cfg("MODEL_NAME") or _DEFAULTS["MODEL_NAME"]
     llm_api_version = _cfg("LLM_API_VERSION")
     llm_api_key = _cfg("LLM_API_KEY")

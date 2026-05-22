@@ -6,14 +6,13 @@ authors = ["Seer Neil <seerneil@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.12,<4.0"
+python = ">=3.10,<4.0"
 streamlit = "^1.39.0"
 requests = "^2.32.0"
 pymupdf = "^1.24.0"
 scikit-learn = "^1.5.0"
 pandas = "^2.1.0"
-tavily-python = ">=0.3.0"
-chromadb = ">=0.6.0"
+rpds-py = "^0.30"
 
 
 [build-system]
