@@ -6,16 +6,19 @@ logger = logging.getLogger(__name__)
 
 
 class VerificationAgent:
-    """Checks that a draft answer is grounded in the provided source chunks."""
+    """Fact-checks a generated draft answer against source documents to prevent hallucinations."""
 
-    def verify(self, query: str, draft: str, chunks: list) -> dict:
+    def verify(self, query: str, draft: str, chunks: list, config: dict = None) -> dict:
         """
-        Verify that *draft* is supported by *chunks*.
-        Returns: {"verified": bool, "issues": str}
+        Verifies that all factual assertions in the draft answer are supported by the retrieved chunks.
+        
+        Returns:
+            dict: {"verified": bool, "issues": str}
         """
         if not draft.strip():
             return {"verified": False, "issues": "Draft answer is empty."}
 
+        # Build context from the top source chunks to check against the draft
         context = "\n\n".join(
             f"[{c.get('source', 'unknown')}]: {c['content'][:400]}" for c in chunks[:5]
         )
@@ -36,11 +39,13 @@ class VerificationAgent:
         )
 
         try:
-            result = call_llm(prompt).strip()
+            result = call_llm(prompt, config=config).strip()
             verified = result.upper().startswith("VERIFIED")
             issues = "" if verified else result
             logger.debug("Verification result: %s", result[:80])
             return {"verified": verified, "issues": issues}
         except Exception as exc:
+            # If verification fails due to API issues, we default to passing the draft
+            # to avoid blocking the answer pipeline unnecessarily.
             logger.warning("Verification LLM call failed (%s); passing answer through.", exc)
             return {"verified": True, "issues": ""}

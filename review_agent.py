@@ -4,10 +4,12 @@ from utilities import call_llm
 
 logger = logging.getLogger(__name__)
 
+# Keep only the last few chat messages to avoid prompt bloating
 _MAX_HISTORY_TURNS = 4
 
+
 class ReviewAgent:
-    """Polishes the final answer for clarity and completeness without adding hallucinations."""
+    """Polishes and structures the generated answer for optimal presentation."""
 
     def review(
         self,
@@ -15,10 +17,14 @@ class ReviewAgent:
         draft: str,
         chunks: list,
         conversation_history: list,
+        config: dict = None,
     ) -> str:
         """
-        Produce a refined, conversational final answer grounded strictly in *chunks*.
-        Falls back to *draft* if the LLM call fails.
+        Reviews and formats the draft answer into a polished, coherent final response.
+        Ensures strict grounding to prevent any hallucinated facts from slipping in.
+        
+        Returns:
+            str: The polished final answer.
         """
         history_block = self._format_history(conversation_history)
         context = "\n\n".join(
@@ -44,9 +50,10 @@ class ReviewAgent:
         )
 
         try:
-            refined = call_llm(prompt).strip()
+            refined = call_llm(prompt, config=config).strip()
             return refined if refined else draft
         except Exception as exc:
+            # Fall back to the original draft if formatting fails
             logger.warning("Review LLM call failed (%s); returning draft.", exc)
             return draft
 

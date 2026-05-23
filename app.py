@@ -1,11 +1,11 @@
 import logging
 import os
-
 import streamlit as st
 
 from document_agent import DocumentAgent
 from orchestrator import AgenticRAGOrchestrator
 
+# Setup application logging
 os.makedirs("logs", exist_ok=True)
 logging.basicConfig(
     filename="logs/app.log",
@@ -14,151 +14,149 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
+# Basic layout config for Streamlit
 st.set_page_config(
     page_title="RAG Assistant",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Custom CSS — minimalist green / white formal theme, no icons
-# IAM NOT A FRONTEND DEVELOPER TO MICROSOFT COPILOT DID THIS!!!!
+# Show configuration saved notification across page reruns
+if st.session_state.get("config_saved"):
+    st.toast("Configuration saved and applied!")
+    st.session_state.config_saved = False
 
+# I am not a frontend developer so the code below are MS Copilot generated.
 st.markdown(
     """
     <style>
-    /* - Global - */
-    html, body, [class*="css"] {
-        font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    :root {
+        --material-green: #2E7D32;
+        --material-green-light: rgba(46, 125, 50, 0.1);
+        --material-green-border: rgba(46, 125, 50, 0.3);
     }
 
-    /* - Sidebar - */
+    html, body, [class*="css"], .stApp {
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+
     [data-testid="stSidebar"] {
-        background-color: #F1F8F1;
-        border-right: 1px solid #C8E6C9;
+        border-right: 1px solid var(--material-green-border) !important;
     }
     [data-testid="stSidebar"] h1,
     [data-testid="stSidebar"] h2,
     [data-testid="stSidebar"] h3 {
-        color: #1B5E20;
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        margin-bottom: 0.5rem;
-    }
-    [data-testid="stSidebar"] .stMarkdown p {
-        font-size: 0.82rem;
-        color: #37474F;
+        color: var(--material-green) !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
     }
 
-    /* - Main header - */
     .rag-header {
-        border-bottom: 2px solid #2E7D32;
-        padding-bottom: 0.6rem;
-        margin-bottom: 1.2rem;
+        border-bottom: 2px solid var(--material-green);
+        padding-bottom: 0.8rem;
+        margin-bottom: 1.5rem;
     }
     .rag-header h1 {
-        color: #1B5E20;
-        font-size: 1.4rem;
-        font-weight: 700;
-        margin: 0;
-        letter-spacing: -0.01em;
+        color: var(--material-green) !important;
+        font-size: 1.6rem !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+        letter-spacing: -0.02em !important;
     }
     .rag-header p {
-        color: #546E7A;
-        font-size: 0.82rem;
-        margin: 0.25rem 0 0;
+        color: var(--text-color) !important;
+        opacity: 0.8;
+        font-size: 0.85rem !important;
+        margin: 0.3rem 0 0 !important;
     }
 
-    /* - Chat messages - */
     [data-testid="stChatMessage"] {
-        border-radius: 6px;
-        padding: 0.5rem 0.75rem;
-        margin-bottom: 0.5rem;
+        border: 1px solid var(--material-green-border) !important;
+        border-radius: 8px !important;
+        padding: 0.6rem 0.8rem !important;
+        margin-bottom: 0.6rem !important;
     }
-    [data-testid="stChatMessage"][aria-label="user"] {
-        background-color: #E8F5E9;
-        border-left: 3px solid #43A047;
-    }
-    [data-testid="stChatMessage"][aria-label="assistant"] {
-        background-color: #FFFFFF;
-        border-left: 3px solid #A5D6A7;
-        border: 1px solid #E0E0E0;
+    [data-testid="stChatMessage"] > div {
+        background-color: transparent !important;
     }
 
-    /* - Chat input - */
+    [data-testid="stChatMessage"][aria-label="user"] {
+        background-color: var(--material-green-light) !important;
+        border-left: 4px solid var(--material-green) !important;
+    }
+
     [data-testid="stChatInput"] textarea {
-        border: 1px solid #A5D6A7 !important;
-        border-radius: 4px !important;
-        font-size: 0.9rem;
+        border: 1px solid var(--material-green-border) !important;
+        border-radius: 6px !important;
     }
     [data-testid="stChatInput"] textarea:focus {
-        border-color: #2E7D32 !important;
-        box-shadow: 0 0 0 2px rgba(46,125,50,0.15) !important;
+        border-color: var(--material-green) !important;
+        box-shadow: 0 0 0 2px rgba(46, 125, 50, 0.2) !important;
     }
 
-    /* - Buttons - */
     .stButton > button {
-        background-color: #2E7D32;
-        color: #FFFFFF;
-        border: none;
-        border-radius: 4px;
-        font-size: 0.82rem;
-        font-weight: 500;
-        padding: 0.35rem 0.9rem;
-        transition: background-color 0.2s;
+        background-color: var(--material-green) !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 6px !important;
+        font-size: 0.8rem !important;
+        font-weight: 500 !important;
+        padding: 0.4rem 1rem !important;
+        transition: opacity 0.2s, transform 0.1s !important;
     }
     .stButton > button:hover {
-        background-color: #1B5E20;
-        color: #FFFFFF;
-        border: none;
+        opacity: 0.9 !important;
+        transform: translateY(-1px) !important;
+    }
+    .stButton > button:active {
+        transform: translateY(0px) !important;
     }
 
-    /* - Source badge - */
     .source-tag {
         display: inline-block;
-        background-color: #E8F5E9;
-        border: 1px solid #A5D6A7;
-        color: #2E7D32;
-        font-size: 0.74rem;
-        padding: 0.15rem 0.5rem;
-        border-radius: 3px;
-        margin-right: 0.35rem;
-        margin-top: 0.25rem;
-    }
-
-    /* - Document list in sidebar - */
-    .doc-item {
-        background-color: #FFFFFF;
-        border: 1px solid #C8E6C9;
-        border-radius: 4px;
-        padding: 0.4rem 0.6rem;
-        margin-bottom: 0.3rem;
-        font-size: 0.8rem;
-        color: #37474F;
-    }
-
-    /* - Expander (agent trace) - */
-    .streamlit-expanderHeader {
-        font-size: 0.78rem;
-        color: #4CAF50;
+        background-color: var(--material-green-light);
+        border: 1px solid var(--material-green-border);
+        color: var(--material-green);
+        font-size: 0.72rem;
         font-weight: 500;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        margin-right: 0.4rem;
+        margin-top: 0.3rem;
     }
 
-    /* - Divider - */
+    .doc-item {
+        border: 1px solid var(--material-green-border);
+        border-radius: 6px;
+        padding: 0.5rem 0.7rem;
+        margin-bottom: 0.4rem;
+        font-size: 0.8rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .streamlit-expanderHeader {
+        background-color: var(--secondary-background-color) !important;
+        border: 1px solid var(--material-green-border) !important;
+        border-radius: 6px !important;
+        font-size: 0.8rem !important;
+        color: var(--material-green) !important;
+    }
+
     hr {
-        border: none;
-        border-top: 1px solid #E0E0E0;
-        margin: 0.8rem 0;
+        border: none !important;
+        border-top: 1px solid var(--material-green-border) !important;
+        margin: 1rem 0 !important;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# Session state initialisation
-
+# Keys and defaults used for the dynamic configuration interface
 _CFG_KEYS = [
     "OLLAMA_API_URL",
     "LLM_API_VERSION",
@@ -175,13 +173,11 @@ _CFG_DEFAULTS = {
     "TAVILY_API_KEY": "",
 }
 
-
+# Initialize session configuration with default empty/local values.
+# To keep credentials completely secure, they are never written to process environment variables
+# and are cleared entirely when the page is refreshed or the tab is closed.
 if "cfg" not in st.session_state:
-    # Initialize configuration with defaults only (session-only, no persistence)
     st.session_state.cfg = {k: _CFG_DEFAULTS[k] for k in _CFG_KEYS}
-    # Propagate into os.environ so utilities/agents pick them up
-    for _k, _v in st.session_state.cfg.items():
-        os.environ[_k] = _v
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -194,8 +190,7 @@ if "orchestrator" not in st.session_state:
 
 doc_agent = DocumentAgent()
 
-
-# Sidebar — document upload
+# Documents Panel in the Sidebar
 with st.sidebar:
     st.markdown("### Documents")
 
@@ -206,16 +201,17 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
+    # Process new documents on upload
     if uploaded_files:
         for uf in uploaded_files:
             if uf.name not in st.session_state.uploaded_names:
                 try:
                     chunks = doc_agent.process(uf.name, uf.read())
-                    with st.spinner(f"Processing '{uf.name}'…"):
+                    with st.spinner(f"Processing '{uf.name}'..."):
                         indexed = st.session_state.orchestrator._retrieval.index(chunks)
                         st.session_state.document_chunks.extend(chunks)
                         st.session_state.uploaded_names.add(uf.name)
-                        logger.info("Processed '%s': %d chunks, %d indexed.", uf.name, len(chunks), indexed)
+                        logger.info("Processed '%s': %d chunks indexed.", uf.name, len(chunks))
                         st.toast(f"'{uf.name}' ready — {len(chunks)} chunks processed.")
                 except ValueError as exc:
                     logger.warning("Upload error for '%s': %s", uf.name, exc)
@@ -227,7 +223,7 @@ with st.sidebar:
                     logger.error("Unexpected error for '%s': %s", uf.name, exc)
                     st.toast(f"Unexpected error processing '{uf.name}'.")
 
-    # Uploaded document list
+    # Render files list or empty message
     if st.session_state.uploaded_names:
         st.markdown("**Indexed documents**")
         for name in sorted(st.session_state.uploaded_names):
@@ -247,50 +243,51 @@ with st.sidebar:
 
     st.markdown("")
 
-    # --- Credentials / Configuration ---
+    # Credentials & API settings panel
     st.markdown("### Configuration")
 
     with st.expander("API Credentials & Endpoints", expanded=False):
         cfg = st.session_state.cfg
 
         st.markdown(
-            '<p style="color:#1B5E20;font-size:0.78rem;font-weight:600;">LLM</p>',
+            '<p style="color:var(--primary-green);font-size:0.78rem;font-weight:600;">LLM</p>',
             unsafe_allow_html=True,
         )
         cfg_ollama_url = st.text_input(
             "LLM Endpoint URL",
             value=cfg["OLLAMA_API_URL"],
-            help="Generate endpoint for your Ollama server. If you provide a base Ollama URL like https://ollama.com/v1, the app will append /api/generate automatically.",
+            help="The full API URL of your LLM generation endpoint (e.g. http://localhost:11434/api/generate).",
         )
         cfg_llm_api_version = st.text_input(
             "LLM API Version",
             value=cfg["LLM_API_VERSION"],
-            placeholder="e.g. v1  or  2024-02-01  (leave blank if not required)",
-            help="Sent as the X-API-Version header on every LLM request.",
+            placeholder="e.g. v1 (optional)",
+            help="Value sent as the X-API-Version header on LLM API calls.",
         )
         cfg_llm_api_key = st.text_input(
             "LLM API Key",
             value=cfg["LLM_API_KEY"],
             type="password",
-            placeholder="e.g. sk-... (leave blank if not required)",
-            help="API key for authentication. Sent as Authorization header.",
+            placeholder="e.g. sk-... (optional)",
+            help="Authorization key sent as a Bearer token in the headers.",
         )
         cfg_model = st.text_input(
             "LLM Model Name",
             value=cfg["MODEL_NAME"],
-            help="Name of the model used for generation (e.g. mistral, gpt-4o).",
+            help="Model identifier parameter for the LLM request payload.",
         )
 
         st.markdown(
-            '<p style="color:#1B5E20;font-size:0.78rem;font-weight:600;margin-top:0.6rem;">Web Search</p>',
+            '<p style="color:var(--primary-green);font-size:0.78rem;font-weight:600;margin-top:0.6rem;">Web Search</p>',
             unsafe_allow_html=True,
         )
         cfg_tavily_key = st.text_input(
             "Tavily API Key",
             value=cfg["TAVILY_API_KEY"],
             type="password",
-            help="Optional. Enables web-search fallback. Get a key at https://app.tavily.com.",
+            help="Optional token to search the web if document retrieval fails.",
         )
+        
         if st.button("Save Configuration"):
             new_cfg = {
                 "OLLAMA_API_URL": cfg_ollama_url,
@@ -300,25 +297,22 @@ with st.sidebar:
                 "TAVILY_API_KEY": cfg_tavily_key,
             }
             st.session_state.cfg = new_cfg
-            # Push into os.environ so utilities and agents pick them up immediately
-            for _k, _v in new_cfg.items():
-                os.environ[_k] = _v
-            # Force orchestrator re-init so WebSearchAgent picks up new Tavily key
+            # Recreate orchestrator instance to reset the state machine
             if "orchestrator" in st.session_state:
                 del st.session_state["orchestrator"]
-            st.toast("Configuration applied.")
+            st.session_state.config_saved = True
             st.rerun()
 
     st.markdown("")
     st.markdown("### About")
     st.markdown(
         '<p>Sequential multi-agent RAG pipeline. '
-        'Agents: Retrieval, Validation, Verification, Review, Web Search.</p>',
+        'Stages: Query Resolution, Retrieval, Validation, Web Search, Answer Generation, Verification, Review.</p>',
         unsafe_allow_html=True,
     )
-    if st.session_state.orchestrator._websearch.available:
+    if st.session_state.cfg.get("TAVILY_API_KEY", "").strip():
         st.markdown(
-            '<p style="color:#2E7D32;font-size:0.78rem;">Web search: active</p>',
+            '<p style="color:var(--primary-green);font-size:0.78rem;font-weight:500;">Web search: active</p>',
             unsafe_allow_html=True,
         )
     else:
@@ -327,9 +321,7 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
 
-# 
-# Main area
-# 
+# Main chat interface layout
 st.markdown(
     '<div class="rag-header">'
     "<h1>RAG Assistant</h1>"
@@ -339,11 +331,10 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Render conversation history
+# Render the active chat history log
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
-        # Render sources and trace for assistant turns
         if msg["role"] == "assistant" and msg.get("sources"):
             badges = "".join(
                 f'<span class="source-tag">{s}</span>' for s in msg["sources"]
@@ -357,20 +348,19 @@ for msg in st.session_state.messages:
                 for i, step in enumerate(msg["agent_trace"], 1):
                     st.markdown(f"`{i}.` {step}")
 
-
-# Chat input
-user_input = st.chat_input("Ask a question about your documents…")
+# Receive and process user queries
+user_input = st.chat_input("Ask a question about your documents...")
 
 if user_input:
     user_input = user_input.strip()
     if not user_input:
         st.stop()
 
-    # Show user message immediately
     with st.chat_message("user"):
         st.markdown(user_input)
     st.session_state.messages.append({"role": "user", "content": user_input})
 
+    # Validate that we have search options available
     if not st.session_state.document_chunks and not st.session_state.orchestrator._websearch.available:
         answer_data = {
             "answer": (
@@ -383,18 +373,18 @@ if user_input:
         }
         st.toast("No documents uploaded and web search is not configured.")
     else:
-        # Run the agent pipeline
-        with st.spinner("Processing through agent pipeline…"):
+        with st.spinner("Processing through agent pipeline..."):
             try:
                 answer_data = st.session_state.orchestrator.run(
                     query=user_input,
                     document_chunks=st.session_state.document_chunks,
                     conversation_history=st.session_state.messages[:-1],
+                    config=st.session_state.cfg,
                 )
                 if answer_data["from_web"]:
                     st.toast("Answer sourced from web search.")
             except RuntimeError as exc:
-                logger.error("Pipeline error: %s", exc)
+                logger.error("Pipeline run error: %s", exc)
                 st.toast(f"Error: {exc}")
                 answer_data = {
                     "answer": str(exc),
@@ -403,7 +393,7 @@ if user_input:
                     "from_web": False,
                 }
             except Exception as exc:
-                logger.error("Unexpected pipeline error: %s", exc, exc_info=True)
+                logger.error("Unexpected pipeline execution error: %s", exc, exc_info=True)
                 st.toast("An unexpected error occurred. Check logs for details.")
                 answer_data = {
                     "answer": "An unexpected error occurred. Please try again.",
@@ -412,7 +402,7 @@ if user_input:
                     "from_web": False,
                 }
 
-    # Display assistant response
+    # Render the assistant's processed response
     with st.chat_message("assistant"):
         st.markdown(answer_data["answer"])
         if answer_data.get("sources"):
@@ -428,7 +418,7 @@ if user_input:
                 for i, step in enumerate(answer_data["agent_trace"], 1):
                     st.markdown(f"`{i}.` {step}")
 
-    # Persist to history
+    # Log response to conversation state
     st.session_state.messages.append(
         {
             "role": "assistant",
@@ -437,4 +427,3 @@ if user_input:
             "agent_trace": answer_data.get("agent_trace", []),
         }
     )
-

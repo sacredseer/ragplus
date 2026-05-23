@@ -7,52 +7,103 @@ logger = logging.getLogger(__name__)
 
 class RetrievalAgent:
     """
-    TF-IDF based retrieval over provided document chunks.
-
-    This implementation removes the dependency on ChromaDB and embeddings
-    and performs an on-demand TF-IDF search across the supplied chunks.
+    Handles TF-IDF based retrieval over document chunks.
+    
+    To optimize performance, this agent fits the vectorizer and pre-computes
+    document embeddings (TF-IDF matrix) at indexing time, avoiding expensive
+    on-demand fitting during query execution.
     """
 
     def __init__(self, top_k: int = 6):
         self.top_k = top_k
-        logger.info("RetrievalAgent ready — TF-IDF retrieval (no persistent store).")
+        self.chunks = []
+        self.vectorizer = None
+        self.matrix = None
+        logger.info("RetrievalAgent initialized with TF-IDF caching.")
 
     @property
     def count(self) -> int:
-        """Number of chunks currently indexed — not applicable for TF-IDF on demand."""
-        return 0
+        """Returns the number of indexed document chunks."""
+        return len(self.chunks)
 
     def index(self, chunks: list) -> int:
-        """No-op for indexing when embeddings/ChromaDB are removed.
-
-        Returns 0 to indicate no embedding/indexing occurred.
         """
-        logger.debug("Index called but embeddings removed; skipping indexing.")
-        return 0
-
-    def retrieve(self, query: str, chunks: list = None) -> tuple:
-        """Find the top-k chunks most relevant to *query* using TF-IDF.
-
-        Returns: (results: list[dict], max_score: float)
+        Indexes new document chunks by extending the local database
+        and rebuilding the TF-IDF vector space.
         """
         if not chunks:
+            return 0
+
+        self.chunks.extend(chunks)
+        self._rebuild_index()
+        return len(chunks)
+
+    def retrieve(self, query: str, chunks: list = None) -> tuple:
+        """
+        Finds the top-k chunks matching the query using cosine similarity.
+        Falls back to on-demand calculation if no cached index is available.
+        """
+        # If chunks are passed explicitly but don't match our index,
+        # fallback to on-demand TF-IDF retrieval to ensure correct results.
+        if chunks is not None and not self.chunks:
+            return self._tfidf_retrieve_ondemand(query, chunks)
+
+        if not self.chunks or self.matrix is None:
             return [], 0.0
 
-        return self._tfidf_retrieve(query, chunks)
+        try:
+            query_vector = self.vectorizer.transform([query])
+            scores = cosine_similarity(query_vector, self.matrix).flatten()
+        except Exception as exc:
+            logger.error("TF-IDF retrieval similarity calculation failed: %s", exc)
+            return [], 0.0
+
+        # Sort in descending order and select top-k indices
+        top_indices = scores.argsort()[::-1][: self.top_k]
+        results = []
+        for idx in top_indices:
+            entry = self.chunks[idx].copy()
+            entry["score"] = float(scores[idx])
+            results.append(entry)
+
+        max_score = float(scores.max()) if len(scores) > 0 else 0.0
+        logger.debug("TF-IDF retrieval returned %d results. Max score: %.3f", len(results), max_score)
+        return results, max_score
 
     def clear(self) -> None:
-        """No persistent store to clear in TF-IDF mode."""
-        logger.debug("Clear called but no persistent store exists; skipping.")
+        """Clears all indexed document chunks and resets the vectorizer."""
+        self.chunks = []
+        self.vectorizer = None
+        self.matrix = None
+        logger.debug("RetrievalAgent database cleared.")
 
-    def _tfidf_retrieve(self, query: str, chunks: list) -> tuple:
+    def _rebuild_index(self) -> None:
+        """Fits the TF-IDF vectorizer and transforms all document chunks."""
+        if not self.chunks:
+            self.matrix = None
+            self.vectorizer = None
+            return
+
+        texts = [chunk.get("content", "") for chunk in self.chunks]
+        try:
+            self.vectorizer = TfidfVectorizer(stop_words="english", max_features=10000)
+            self.matrix = self.vectorizer.fit_transform(texts)
+            logger.info("TF-IDF index rebuilt successfully with %d chunks.", len(self.chunks))
+        except Exception as exc:
+            logger.error("Failed to build TF-IDF index: %s", exc)
+            self.matrix = None
+            self.vectorizer = None
+
+    def _tfidf_retrieve_ondemand(self, query: str, chunks: list) -> tuple:
+        """Calculates TF-IDF on-the-fly for ad-hoc chunk lists."""
         texts = [c.get("content", "") for c in chunks]
         try:
-            vec = TfidfVectorizer(stop_words="english", max_features=10_000)
+            vec = TfidfVectorizer(stop_words="english", max_features=10000)
             matrix = vec.fit_transform(texts)
             q_vec = vec.transform([query])
             scores = cosine_similarity(q_vec, matrix).flatten()
         except Exception as exc:
-            logger.error("TF-IDF retrieval error: %s", exc)
+            logger.error("On-demand TF-IDF retrieval failed: %s", exc)
             return [], 0.0
 
         top_indices = scores.argsort()[::-1][: self.top_k]
@@ -63,5 +114,4 @@ class RetrievalAgent:
             results.append(entry)
 
         max_score = float(scores.max()) if len(scores) > 0 else 0.0
-        logger.debug("TF-IDF retrieved %d chunk(s) (max_score=%.3f).", len(results), max_score)
         return results, max_score

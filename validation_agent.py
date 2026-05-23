@@ -4,30 +4,37 @@ from utilities import call_llm
 
 logger = logging.getLogger(__name__)
 
+# Heuristics for skipping LLM validation depending on TF-IDF cosine similarity scores
 HARD_REJECT_THRESHOLD = 0.04
 HARD_ACCEPT_THRESHOLD = 0.30
 
 
 class ValidationAgent:
-    """Validates whether retrieved chunks actually contain information relevant to the query."""
+    """Evaluates whether the retrieved document chunks contain context relevant to answering the query."""
 
-    def validate(self, query: str, chunks: list, retrieval_score: float) -> dict:
+    def validate(self, query: str, chunks: list, retrieval_score: float, config: dict = None) -> dict:
         """
-        Determine if the retrieved content can answer the query.
-        Returns: {"relevant": bool, "reason": str}
+        Determines if retrieved content is relevant. If the score is in the ambiguous middle range,
+        it uses the LLM to perform semantic validation.
+        
+        Returns:
+            dict: {"relevant": bool, "reason": str}
         """
+        # Immediately reject retrieval results with extremely low keyword matching scores
         if not chunks or retrieval_score < HARD_REJECT_THRESHOLD:
             return {
                 "relevant": False,
                 "reason": "Retrieval score is too low; no useful content found in documents.",
             }
 
+        # Accept very high scores directly without calling the LLM, saving latency
         if retrieval_score >= HARD_ACCEPT_THRESHOLD:
             return {
                 "relevant": True,
                 "reason": f"High-confidence retrieval (score {retrieval_score:.2f}).",
             }
 
+        # Formulate prompt for the LLM to inspect the retrieved text snippets
         excerpt = "\n\n".join(c["content"][:300] for c in chunks[:3])
         prompt = (
             "You are a relevance validator.\n\n"
@@ -39,7 +46,7 @@ class ValidationAgent:
         )
 
         try:
-            answer = call_llm(prompt).strip().upper()
+            answer = call_llm(prompt, config=config).strip().upper()
             relevant = answer.startswith("YES")
             return {
                 "relevant": relevant,
@@ -50,6 +57,7 @@ class ValidationAgent:
                 ),
             }
         except Exception as exc:
+            # Fallback to the similarity score in case LLM generation fails
             logger.warning("Validation LLM call failed (%s); falling back to score.", exc)
             return {
                 "relevant": retrieval_score >= HARD_REJECT_THRESHOLD,
