@@ -1,0 +1,379 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --gemini-bg: #FFFFFF;
+    --gemini-sidebar-bg: #F0F4F9;
+    --gemini-text-primary: #1F1F1F;
+    --gemini-text-secondary: #444746;
+    --gemini-blue: #0B57D0;
+    --gemini-blue-hover: #0842A0;
+    --gemini-blue-light: #D3E3FD;
+    --gemini-border: #C4C7C5;
+    --gemini-border-light: #E3E3E3;
+    --gemini-surface: #F8F9FA;
+}
+
+html, body, [class*="css"], .stApp {
+    font-family: 'Google Sans', 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--gemini-text-primary);
+    background-color: var(--gemini-bg);
+}
+
+/* Sidebar Styling */
+[data-testid="stSidebar"] {
+    background-color: var(--gemini-sidebar-bg) !important;
+    border-right: 1px solid var(--gemini-border-light) !important;
+}
+
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: var(--gemini-blue) !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    margin-bottom: 0.8rem !important;
+}
+
+/* Sidebar App Header */
+.sidebar-header {
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--gemini-border-light);
+    padding-bottom: 1rem;
+}
+
+.sidebar-header h1 {
+    font-family: 'Google Sans', sans-serif !important;
+    color: var(--gemini-blue) !important;
+    font-size: 1.7rem !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.2 !important;
+}
+
+.sidebar-header p {
+    color: var(--gemini-text-secondary) !important;
+    font-size: 0.82rem !important;
+    margin-top: 0.4rem !important;
+    line-height: 1.4 !important;
+    margin-bottom: 0 !important;
+}
+
+/* Sidebar Profile Box */
+.sidebar-profile {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    background-color: #FFFFFF;
+    border: 1px solid var(--gemini-border-light);
+    border-radius: 16px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.sidebar-profile-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #E8F0FE;
+    border: 1px solid #D2E3FC;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-profile-avatar img,
+.sidebar-profile-avatar svg {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}
+
+.sidebar-profile-details {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.sidebar-profile-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--gemini-text-primary);
+    line-height: 1.2;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.sidebar-profile-email {
+    font-size: 0.72rem;
+    color: var(--gemini-text-secondary);
+    line-height: 1.2;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+/* Document List styling */
+.doc-item {
+    background-color: #FFFFFF;
+    border: 1px solid var(--gemini-border-light);
+    border-radius: 12px;
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--gemini-text-secondary);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.doc-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* Diagnostics panel styling */
+.diagnostics-panel {
+    background-color: #FFFFFF;
+    border: 1px solid var(--gemini-border-light);
+    border-radius: 16px;
+    padding: 0.8rem 1rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.diagnostic-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+}
+
+.diagnostic-row:last-child {
+    margin-bottom: 0;
+}
+
+.diagnostic-label {
+    color: var(--gemini-text-secondary);
+    font-weight: 500;
+}
+
+.diagnostic-value {
+    color: var(--gemini-text-primary);
+    font-weight: 600;
+}
+
+/* Chat Message Bubbles with Rounded Edges */
+[data-testid="stChatMessage"] {
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0.6rem 1rem !important;
+    margin-bottom: 0.8rem !important;
+    display: flex !important;
+}
+
+/* User Message bubble */
+[data-testid="stChatMessage"][aria-label="user"],
+[data-testid="stChatMessage"][aria-label="Chat message from user"] {
+    background-color: var(--gemini-blue-light) !important;
+    color: var(--gemini-text-primary) !important;
+    border-radius: 20px !important;
+    padding: 1rem 1.2rem !important;
+    max-width: 80% !important;
+    margin-left: auto !important;
+    margin-right: 0px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+}
+
+/* Assistant Message bubble */
+[data-testid="stChatMessage"][aria-label="assistant"],
+[data-testid="stChatMessage"][aria-label="Chat message from assistant"] {
+    background-color: var(--gemini-surface) !important;
+    color: var(--gemini-text-primary) !important;
+    border-radius: 20px !important;
+    border: 1px solid var(--gemini-border-light) !important;
+    padding: 1rem 1.2rem !important;
+    max-width: 85% !important;
+    margin-right: auto !important;
+    margin-left: 0px !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.02) !important;
+}
+
+[data-testid="stChatMessage"] [data-testid="stChatMessageAvatar"] {
+    background-color: transparent !important;
+    border: none !important;
+}
+
+/* Rectangular Chat Input Styling */
+[data-testid="stChatInput"] {
+    border-radius: 8px !important;
+    border: 1px solid var(--gemini-border) !important;
+    background-color: #FFFFFF !important;
+    padding: 4px 12px !important;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.03) !important;
+    transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+[data-testid="stChatInput"]:focus-within {
+    border-color: var(--gemini-blue) !important;
+    box-shadow: 0 2px 10px rgba(11, 87, 208, 0.12) !important;
+}
+
+[data-testid="stChatInput"] textarea {
+    border: none !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+    padding: 8px 4px !important;
+    font-size: 0.95rem !important;
+    resize: none !important;
+    border-radius: 4px !important;
+}
+
+/* Buttons Styling */
+.stButton > button {
+    background-color: var(--gemini-blue) !important;
+    color: #FFFFFF !important;
+    border: 1px solid var(--gemini-blue) !important;
+    border-radius: 20px !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    padding: 0.5rem 1.5rem !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: pointer !important;
+}
+.stButton > button:hover {
+    background-color: var(--gemini-blue-hover) !important;
+    border-color: var(--gemini-blue-hover) !important;
+    box-shadow: 0 2px 6px rgba(11, 87, 208, 0.2) !important;
+    transform: translateY(-0.5px) !important;
+}
+.stButton > button:active {
+    transform: translateY(0.5px) !important;
+}
+
+/* Source Tags */
+.source-tag {
+    display: inline-block;
+    background-color: #E8F0FE;
+    border: 1px solid #D2E3FC;
+    color: var(--gemini-blue);
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.6rem;
+    border-radius: 12px;
+    margin-right: 0.5rem;
+    margin-top: 0.4rem;
+    transition: background-color 0.2s;
+}
+.source-tag:hover {
+    background-color: #D2E3FC;
+}
+
+/* Expander custom style */
+.streamlit-expanderHeader {
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--gemini-border-light) !important;
+    border-radius: 12px !important;
+    font-size: 0.85rem !important;
+    color: var(--gemini-blue) !important;
+    padding: 0.6rem 1rem !important;
+}
+.streamlit-expanderContent {
+    border-left: 1px solid var(--gemini-border-light) !important;
+    border-right: 1px solid var(--gemini-border-light) !important;
+    border-bottom: 1px solid var(--gemini-border-light) !important;
+    border-bottom-left-radius: 12px !important;
+    border-bottom-right-radius: 12px !important;
+    background-color: #FFFFFF !important;
+    padding: 1rem !important;
+}
+
+/* Divider custom style */
+hr {
+    border: none !important;
+    border-top: 1px solid var(--gemini-border-light) !important;
+    margin: 1.5rem 0 !important;
+}
+
+/* Login screen styling */
+.login-card {
+    max-width: 900px;
+    margin: 6rem auto;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-title {
+    font-family: 'Google Sans', sans-serif;
+    color: var(--gemini-blue);
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+
+.login-subtitle {
+    color: var(--gemini-text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 2.2rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.social-login-btn-container {
+    width: 800px;
+    max-width: 90%;
+    margin: 0 auto 1.5rem auto;
+}
+
+.social-login-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 0.8rem;
+    border-radius: 10px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--gemini-border-light);
+}
+
+.google-btn {
+    background-color: #FFFFFF;
+    color: var(--gemini-text-primary);
+}
+.google-btn:hover {
+    background-color: #F8F9FA;
+    border-color: var(--gemini-border);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.github-btn {
+    background-color: #FFFFFF;
+    color: var(--gemini-blue);
+    border-color: var(--gemini-blue);
+}
+.github-btn:hover {
+    background-color: var(--gemini-blue-light);
+    border-color: var(--gemini-blue-hover);
+    box-shadow: 0 2px 8px rgba(11, 87, 208, 0.15);
+}
+
+.dev-btn {
+    background-color: #E8F0FE;
+    color: var(--gemini-blue);
+    border-color: #D2E3FC;
+}
+.dev-btn:hover {
+    background-color: #D2E3FC;
+}

@@ -1,15 +1,18 @@
-import logging
+from ..util.utilities import call_llm
 
-from utilities import call_llm
-
-logger = logging.getLogger(__name__)
-
-# Keep only the last few chat messages to avoid prompt bloating
 _MAX_HISTORY_TURNS = 4
 
 
 class ReviewAgent:
     """Polishes and structures the generated answer for optimal presentation."""
+
+    def _count_tokens(self, text: str) -> int:
+        try:
+            import tiktoken
+            encoding = tiktoken.get_encoding("cl100k_base")
+            return len(encoding.encode(text))
+        except Exception:
+            return int(len(text.split()) * 1.35)
 
     def review(
         self,
@@ -18,13 +21,13 @@ class ReviewAgent:
         chunks: list,
         conversation_history: list,
         config: dict = None,
-    ) -> str:
+    ) -> tuple[str, int]:
         """
         Reviews and formats the draft answer into a polished, coherent final response.
         Ensures strict grounding to prevent any hallucinated facts from slipping in.
         
         Returns:
-            str: The polished final answer.
+            tuple[str, int]: The polished final answer and tokens consumed.
         """
         history_block = self._format_history(conversation_history)
         context = "\n\n".join(
@@ -51,11 +54,11 @@ class ReviewAgent:
 
         try:
             refined = call_llm(prompt, config=config).strip()
-            return refined if refined else draft
+            final_answer = refined if refined else draft
+            tokens = self._count_tokens(prompt) + self._count_tokens(final_answer)
+            return final_answer, tokens
         except Exception as exc:
-            # Fall back to the original draft if formatting fails
-            logger.warning("Review LLM call failed (%s); returning draft.", exc)
-            return draft
+            return draft, self._count_tokens(prompt) + self._count_tokens(draft)
 
     def _format_history(self, history: list) -> str:
         if not history:
