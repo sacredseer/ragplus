@@ -1,13 +1,14 @@
 import logging
+import time
 from typing import TypedDict, List, Dict, Any
 
 from langgraph.graph import StateGraph, END
-from retrieval_agent import RetrievalAgent
-from validation_agent import ValidationAgent
-from verification_agent import VerificationAgent
-from review_agent import ReviewAgent
-from websearch_agent import WebSearchAgent
-from utilities import call_llm
+from .retrieval_agent import RetrievalAgent
+from .validation_agent import ValidationAgent
+from .verification_agent import VerificationAgent
+from .review_agent import ReviewAgent
+from .websearch_agent import WebSearchAgent
+from ..util.utilities import call_llm
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,15 @@ _NO_DOCS_NO_WEB_MSG = (
 _NO_DOCS_WEB_FAIL_MSG = (
     "No documents have been uploaded. Web search returned no results for your query."
 )
+
+
+def _count_tokens(text: str) -> int:
+    try:
+        import tiktoken
+        encoding = tiktoken.get_encoding("cl100k_base")
+        return len(encoding.encode(text))
+    except Exception:
+        return int(len(text.split()) * 1.35)
 
 
 class AgentState(TypedDict):
@@ -64,6 +74,7 @@ class AgenticRAGOrchestrator:
         self._review = ReviewAgent()
         self._websearch = WebSearchAgent()
         self._graph = self._build_workflow_graph()
+        self._status_callback = None
 
     def _build_workflow_graph(self) -> StateGraph:
         workflow = StateGraph(AgentState)
@@ -116,9 +127,16 @@ class AgenticRAGOrchestrator:
         return workflow.compile()
 
     def _node_resolve_query(self, state: AgentState) -> Dict[str, Any]:
+        if self._status_callback:
+            self._status_callback("Step 1 — Query Resolution: rewriting query based on conversation context...")
+            
         trace = list(state.get("agent_trace", []))
-        trace.append("Stage 1 — Query Resolution: resolving query with conversation context.")
-        resolved = self._resolve_query(state["query"], state["history"], config=state["config"])
+        start_time = time.perf_counter()
+        
+        resolved, tokens = self._resolve_query(state["query"], state["history"], config=state["config"])
+        elapsed = time.perf_counter() - start_time
+        
+        trace.append(f"Step 1 — Query Resolution ({elapsed:.3f}s : {tokens} tokens): resolving query with conversation context.")
         logger.info("Resolved query: %s", resolved)
         return {
             "resolved_query": resolved,
@@ -126,14 +144,20 @@ class AgenticRAGOrchestrator:
         }
 
     def _node_retrieve(self, state: AgentState) -> Dict[str, Any]:
+        if self._status_callback:
+            self._status_callback("Step 2 — Retrieval Agent: searching document chunks...")
+            
         trace = list(state.get("agent_trace", []))
-        trace.append("Stage 2 — Retrieval Agent: searching uploaded documents.")
+        start_time = time.perf_counter()
         
         if self._retrieval.count != len(state["document_chunks"]) and state["document_chunks"]:
             self._retrieval.clear()
             self._retrieval.index(state["document_chunks"])
             
         retrieved, max_score = self._retrieval.retrieve(state["resolved_query"])
+        elapsed = time.perf_counter() - start_time
+        
+        trace.append(f"Step 2 — Retrieval Agent ({elapsed:.3f}s : 0 tokens): searching uploaded documents.")
         trace.append(f"  Retrieved {len(retrieved)} chunk(s) (top score: {max_score:.3f}).")
         return {
             "retrieved_chunks": retrieved,
@@ -142,14 +166,22 @@ class AgenticRAGOrchestrator:
         }
 
     def _node_validate(self, state: AgentState) -> Dict[str, Any]:
+        if self._status_callback:
+            self._status_callback("Step 3 — Validation Agent: evaluating context relevance...")
+            
         trace = list(state.get("agent_trace", []))
-        trace.append("Stage 3 — Validation Agent: checking relevance of retrieved content.")
+        start_time = time.perf_counter()
+        
         validation = self._validation.validate(
             state["resolved_query"],
             state["retrieved_chunks"],
             state["retrieval_score"],
             config=state["config"]
         )
+        elapsed = time.perf_counter() - start_time
+        tokens = validation.get("tokens", 0)
+        
+        trace.append(f"Step 3 — Validation Agent ({elapsed:.3f}s : {tokens} tokens): checking relevance of retrieved content.")
         trace.append(f"  {validation['reason']}")
         return {
             "is_relevant": validation["relevant"],
@@ -160,11 +192,16 @@ class AgenticRAGOrchestrator:
         return "relevant" if state["is_relevant"] else "not_relevant"
 
     def _node_websearch(self, state: AgentState) -> Dict[str, Any]:
+        if self._status_callback:
+            self._status_callback("Step 4 — Web Search Agent: falling back to Tavily search...")
+            
         trace = list(state.get("agent_trace", []))
-        trace.append("Stage 4 — Web Search Agent: no document results; searching the web.")
+        start_time = time.perf_counter()
         
         tavily_key = (state["config"].get("TAVILY_API_KEY") or "").strip()
         if not tavily_key:
+            elapsed = time.perf_counter() - start_time
+            trace.append(f"Step 4 — Web Search Agent ({elapsed:.3f}s : 0 tokens): no document results; searching the web.")
             trace.append("  Web search is not configured (TAVILY_API_KEY missing).")
             if not state["document_chunks"]:
                 return {
@@ -180,6 +217,9 @@ class AgenticRAGOrchestrator:
             }
         
         web_results = self._websearch.search(state["resolved_query"], api_key=tavily_key)
+        elapsed = time.perf_counter() - start_time
+        
+        trace.append(f"Step 4 — Web Search Agent ({elapsed:.3f}s : 0 tokens): no document results; searching the web.")
         if not web_results:
             trace.append("  Web search returned no results.")
             if not state["document_chunks"]:
@@ -208,14 +248,20 @@ class AgenticRAGOrchestrator:
         return "continue_to_draft"
 
     def _node_draft(self, state: AgentState) -> Dict[str, Any]:
+        if self._status_callback:
+            self._status_callback("Step 5 — Answer Generation: drafting answer from sources...")
+            
         trace = list(state.get("agent_trace", []))
-        trace.append("Stage 5 — Answer Generation: drafting answer from retrieved content.")
+        start_time = time.perf_counter()
         
         chunks = state.get("final_chunks")
         if chunks is None:
             chunks = state["retrieved_chunks"]
             
-        draft = self._generate_answer(state["resolved_query"], chunks, state["history"], config=state["config"])
+        draft, tokens = self._generate_answer(state["resolved_query"], chunks, state["history"], config=state["config"])
+        elapsed = time.perf_counter() - start_time
+        
+        trace.append(f"Step 5 — Answer Generation ({elapsed:.3f}s : {tokens} tokens): drafting answer from retrieved content.")
         return {
             "draft_answer": draft,
             "final_chunks": chunks,
@@ -223,11 +269,15 @@ class AgenticRAGOrchestrator:
         }
 
     def _node_verify(self, state: AgentState) -> Dict[str, Any]:
+        if self._status_callback:
+            self._status_callback("Step 6 — Verification Agent: checking facts for accuracy...")
+            
         trace = list(state.get("agent_trace", []))
-        trace.append("Stage 6 — Verification Agent: verifying answer against sources.")
+        start_time = time.perf_counter()
         
         draft = state.get("draft_answer", "")
         if not draft:
+            elapsed = time.perf_counter() - start_time
             return {
                 "is_verified": False,
                 "verification_issues": "Draft answer is empty.",
@@ -240,7 +290,10 @@ class AgenticRAGOrchestrator:
             state["final_chunks"],
             config=state["config"]
         )
+        elapsed = time.perf_counter() - start_time
+        tokens = verification.get("tokens", 0)
         
+        trace.append(f"Step 6 — Verification Agent ({elapsed:.3f}s : {tokens} tokens): verifying answer against sources.")
         if not verification["verified"]:
             trace.append(f"  Issues found: {verification['issues'][:120]}")
             trace.append("  Regenerating strictly grounded answer.")
@@ -258,47 +311,64 @@ class AgenticRAGOrchestrator:
         }
 
     def _route_after_verification(self, state: AgentState) -> str:
-        return "review" if state["is_verified"] else "regenerate"
+        return "verified" if state["is_verified"] else "regenerate"
 
     def _node_grounded_draft(self, state: AgentState) -> Dict[str, Any]:
-        draft = self._generate_grounded_answer(
+        if self._status_callback:
+            self._status_callback("Step 6b — Grounded Draft Agent: strictly regenerating answer...")
+            
+        trace = list(state.get("agent_trace", []))
+        start_time = time.perf_counter()
+        
+        draft, tokens = self._generate_grounded_answer(
             state["resolved_query"],
             state["final_chunks"],
             state["history"],
             config=state["config"]
         )
+        elapsed = time.perf_counter() - start_time
+        trace.append(f"  Grounded Answer Generation ({elapsed:.3f}s : {tokens} tokens): strictly regenerated answer.")
         return {
             "draft_answer": draft,
+            "agent_trace": trace,
         }
 
     def _node_review(self, state: AgentState) -> Dict[str, Any]:
+        if self._status_callback:
+            self._status_callback("Step 7 — Review Agent: polishing final response styling...")
+            
         trace = list(state.get("agent_trace", []))
-        trace.append("Stage 7 — Review Agent: refining and finalising answer.")
+        start_time = time.perf_counter()
         
         draft = state.get("draft_answer", "")
         if not draft:
+            elapsed = time.perf_counter() - start_time
             return {
                 "final_answer": _NO_RESULTS_MSG,
                 "agent_trace": trace,
             }
             
-        final_answer = self._review.review(
+        final_answer, tokens = self._review.review(
             state["resolved_query"],
             draft,
             state["final_chunks"],
             state["history"],
             config=state["config"]
         )
+        elapsed = time.perf_counter() - start_time
+        
+        trace.append(f"Step 7 — Review Agent ({elapsed:.3f}s : {tokens} tokens): refining and finalising answer.")
         trace.append("  Pipeline complete.")
         return {
             "final_answer": final_answer,
             "agent_trace": trace,
         }
 
-    def run(self, query: str, document_chunks: list, conversation_history: list = None, config: dict = None) -> dict:
+    def run(self, query: str, document_chunks: list, conversation_history: list = None, config: dict = None, status_callback = None) -> dict:
         """
         Executes the LangGraph-managed sequential multi-agent RAG workflow.
         """
+        self._status_callback = status_callback
         initial_state: AgentState = {
             "query": query,
             "resolved_query": query,
@@ -317,7 +387,10 @@ class AgenticRAGOrchestrator:
             "config": config or {},
         }
 
-        final_output = self._graph.invoke(initial_state)
+        try:
+            final_output = self._graph.invoke(initial_state)
+        finally:
+            self._status_callback = None
 
         final_chunks = final_output.get("final_chunks") or []
         sources = list(dict.fromkeys(c.get("source", "") for c in final_chunks))
@@ -329,9 +402,9 @@ class AgenticRAGOrchestrator:
             "from_web": final_output.get("from_web", False),
         }
 
-    def _resolve_query(self, query: str, history: list, config: dict = None) -> str:
+    def _resolve_query(self, query: str, history: list, config: dict = None) -> tuple[str, int]:
         if not history:
-            return query
+            return query, 0
 
         recent = history[-4:]
         history_text = "\n".join(
@@ -346,12 +419,14 @@ class AgenticRAGOrchestrator:
         )
         try:
             resolved = call_llm(prompt, config=config).strip()
-            return resolved if resolved else query
+            resolved_query = resolved if resolved else query
+            tokens = _count_tokens(prompt) + _count_tokens(resolved_query)
+            return resolved_query, tokens
         except Exception as exc:
             logger.warning("Query resolution failed (%s); using original query.", exc)
-            return query
+            return query, _count_tokens(prompt)
 
-    def _generate_answer(self, query: str, chunks: list, history: list, config: dict = None) -> str:
+    def _generate_answer(self, query: str, chunks: list, history: list, config: dict = None) -> tuple[str, int]:
         history_block = ""
         if history:
             recent = history[-4:]
@@ -373,12 +448,14 @@ class AgenticRAGOrchestrator:
             "Answer:"
         )
         try:
-            return call_llm(prompt, config=config).strip()
+            draft = call_llm(prompt, config=config).strip()
+            tokens = _count_tokens(prompt) + _count_tokens(draft)
+            return draft, tokens
         except Exception as exc:
             logger.error("Draft answer generation failed: %s", exc)
             raise
 
-    def _generate_grounded_answer(self, query: str, chunks: list, history: list, config: dict = None) -> str:
+    def _generate_grounded_answer(self, query: str, chunks: list, history: list, config: dict = None) -> tuple[str, int]:
         context = "\n\n".join(
             f"[Source: {c.get('source', 'unknown')}]\n{c['content']}" for c in chunks[:6]
         )
@@ -392,7 +469,9 @@ class AgenticRAGOrchestrator:
             "Strictly grounded answer:"
         )
         try:
-            return call_llm(prompt, config=config).strip()
+            draft = call_llm(prompt, config=config).strip()
+            tokens = _count_tokens(prompt) + _count_tokens(draft)
+            return draft, tokens
         except Exception as exc:
             logger.error("Strictly grounded answer generation failed: %s", exc)
             raise

@@ -43,8 +43,6 @@ class RetrievalAgent:
         Finds the top-k chunks matching the query using cosine similarity.
         Falls back to on-demand calculation if no cached index is available.
         """
-        # If chunks are passed explicitly but don't match our index,
-        # fallback to on-demand TF-IDF retrieval to ensure correct results.
         if chunks is not None and not self.chunks:
             return self._tfidf_retrieve_ondemand(query, chunks)
 
@@ -58,7 +56,6 @@ class RetrievalAgent:
             logger.error("TF-IDF retrieval similarity calculation failed: %s", exc)
             return [], 0.0
 
-        # Sort in descending order and select top-k indices
         top_indices = scores.argsort()[::-1][: self.top_k]
         results = []
         for idx in top_indices:

@@ -6,7 +6,6 @@ from requests.exceptions import JSONDecodeError
 
 logger = logging.getLogger(__name__)
 
-# Default configurations for local execution.
 _DEFAULTS = {
     "OLLAMA_API_URL": "http://localhost:11434/api/generate",
     "MODEL_NAME": "mistral",
@@ -28,8 +27,6 @@ def call_llm(prompt: str, system: str = None, config: dict = None) -> str:
     api_version = (cfg.get("LLM_API_VERSION") or _DEFAULTS["LLM_API_VERSION"]).strip()
     api_key = (cfg.get("LLM_API_KEY") or _DEFAULTS["LLM_API_KEY"]).strip()
 
-    # If the user provides a base OpenAI-style URL ending in /v1, 
-    # we automatically route it to the chat completions endpoint.
     if "/v1" in api_url and not api_url.endswith("/chat/completions"):
         api_url = api_url.rstrip("/") + "/chat/completions"
 
@@ -39,7 +36,6 @@ def call_llm(prompt: str, system: str = None, config: dict = None) -> str:
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
 
-    # Determine whether to construct an OpenAI chat payload or native Ollama payload
     is_openai_format = "/v1" in api_url
     if is_openai_format:
         messages = []
@@ -70,7 +66,6 @@ def call_llm(prompt: str, system: str = None, config: dict = None) -> str:
             if not line:
                 continue
             try:
-                # Strip potential SSE 'data: ' prefix if streaming from an OpenAI endpoint
                 if line.startswith("data: "):
                     line = line[len("data: "):].strip()
                 if line == "[DONE]":
@@ -78,20 +73,16 @@ def call_llm(prompt: str, system: str = None, config: dict = None) -> str:
                     
                 data = json.loads(line)
                 
-                # Extract text depending on the response schema format
                 if "response" in data:
-                    # Ollama format
                     collected_text += data.get("response", "")
                     if data.get("done"):
                         break
                 elif "choices" in data and len(data["choices"]) > 0:
-                    # OpenAI format
                     delta = data["choices"][0].get("delta", {})
                     collected_text += delta.get("content", "")
                     if data["choices"][0].get("finish_reason") is not None:
                         break
             except (JSONDecodeError, KeyError):
-                # Ignore non-decodable lines in the stream
                 continue
 
         return collected_text.strip()

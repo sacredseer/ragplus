@@ -1,6 +1,6 @@
 import logging
 
-from utilities import call_llm
+from ..util.utilities import call_llm
 
 logger = logging.getLogger(__name__)
 
@@ -8,17 +8,24 @@ logger = logging.getLogger(__name__)
 class VerificationAgent:
     """Fact-checks a generated draft answer against source documents to prevent hallucinations."""
 
+    def _count_tokens(self, text: str) -> int:
+        try:
+            import tiktoken
+            encoding = tiktoken.get_encoding("cl100k_base")
+            return len(encoding.encode(text))
+        except Exception:
+            return int(len(text.split()) * 1.35)
+
     def verify(self, query: str, draft: str, chunks: list, config: dict = None) -> dict:
         """
         Verifies that all factual assertions in the draft answer are supported by the retrieved chunks.
         
         Returns:
-            dict: {"verified": bool, "issues": str}
+            dict: {"verified": bool, "issues": str, "tokens": int}
         """
         if not draft.strip():
-            return {"verified": False, "issues": "Draft answer is empty."}
+            return {"verified": False, "issues": "Draft answer is empty.", "tokens": 0}
 
-        # Build context from the top source chunks to check against the draft
         context = "\n\n".join(
             f"[{c.get('source', 'unknown')}]: {c['content'][:400]}" for c in chunks[:5]
         )
@@ -43,9 +50,8 @@ class VerificationAgent:
             verified = result.upper().startswith("VERIFIED")
             issues = "" if verified else result
             logger.debug("Verification result: %s", result[:80])
-            return {"verified": verified, "issues": issues}
+            tokens = self._count_tokens(prompt) + self._count_tokens(result)
+            return {"verified": verified, "issues": issues, "tokens": tokens}
         except Exception as exc:
-            # If verification fails due to API issues, we default to passing the draft
-            # to avoid blocking the answer pipeline unnecessarily.
             logger.warning("Verification LLM call failed (%s); passing answer through.", exc)
-            return {"verified": True, "issues": ""}
+            return {"verified": True, "issues": "", "tokens": 0}
