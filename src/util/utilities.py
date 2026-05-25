@@ -1,10 +1,7 @@
 import os
-import logging
 import requests
 import json
 from requests.exceptions import JSONDecodeError
-
-logger = logging.getLogger(__name__)
 
 _DEFAULTS = {
     "OLLAMA_API_URL": "http://localhost:11434/api/generate",
@@ -88,13 +85,11 @@ def call_llm(prompt: str, system: str = None, config: dict = None) -> str:
         return collected_text.strip()
 
     except requests.exceptions.ConnectionError as exc:
-        logger.error("LLM connection failed: %s", exc)
         raise RuntimeError(
             f"Unable to connect to the LLM service at '{api_url}'. "
             "Please check if the service is running and the endpoint is accessible."
         ) from exc
     except requests.exceptions.RequestException as exc:
-        logger.error("LLM API request failed: %s", exc)
         raise RuntimeError(f"LLM API request failed: {exc}") from exc
 
 

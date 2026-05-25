@@ -1,4 +1,3 @@
-import logging
 import time
 from typing import TypedDict, List, Dict, Any
 
@@ -9,8 +8,6 @@ from .verification_agent import VerificationAgent
 from .review_agent import ReviewAgent
 from .websearch_agent import WebSearchAgent
 from ..util.utilities import call_llm
-
-logger = logging.getLogger(__name__)
 
 _NO_RESULTS_MSG = (
     "I was unable to find relevant information in the uploaded documents or via web search. "
@@ -137,7 +134,6 @@ class AgenticRAGOrchestrator:
         elapsed = time.perf_counter() - start_time
         
         trace.append(f"Step 1 — Query Resolution ({elapsed:.3f}s : {tokens} tokens): resolving query with conversation context.")
-        logger.info("Resolved query: %s", resolved)
         return {
             "resolved_query": resolved,
             "agent_trace": trace,
@@ -423,7 +419,6 @@ class AgenticRAGOrchestrator:
             tokens = _count_tokens(prompt) + _count_tokens(resolved_query)
             return resolved_query, tokens
         except Exception as exc:
-            logger.warning("Query resolution failed (%s); using original query.", exc)
             return query, _count_tokens(prompt)
 
     def _generate_answer(self, query: str, chunks: list, history: list, config: dict = None) -> tuple[str, int]:
@@ -452,7 +447,6 @@ class AgenticRAGOrchestrator:
             tokens = _count_tokens(prompt) + _count_tokens(draft)
             return draft, tokens
         except Exception as exc:
-            logger.error("Draft answer generation failed: %s", exc)
             raise
 
     def _generate_grounded_answer(self, query: str, chunks: list, history: list, config: dict = None) -> tuple[str, int]:
@@ -473,5 +467,4 @@ class AgenticRAGOrchestrator:
             tokens = _count_tokens(prompt) + _count_tokens(draft)
             return draft, tokens
         except Exception as exc:
-            logger.error("Strictly grounded answer generation failed: %s", exc)
             raise

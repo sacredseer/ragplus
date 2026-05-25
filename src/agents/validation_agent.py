@@ -1,8 +1,4 @@
-import logging
-
 from ..util.utilities import call_llm
-
-logger = logging.getLogger(__name__)
 
 HARD_REJECT_THRESHOLD = 0.04
 HARD_ACCEPT_THRESHOLD = 0.30
@@ -93,7 +89,6 @@ class ValidationAgent:
                 "tokens": tokens,
             }
         except Exception as exc:
-            logger.warning("Validation LLM call failed (%s); falling back to score.", exc)
             return {
                 "relevant": retrieval_score >= HARD_REJECT_THRESHOLD,
                 "reason": f"Score-based fallback (score {retrieval_score:.2f}).",

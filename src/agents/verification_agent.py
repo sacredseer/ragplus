@@ -1,8 +1,4 @@
-import logging
-
 from ..util.utilities import call_llm
-
-logger = logging.getLogger(__name__)
 
 
 class VerificationAgent:
@@ -49,9 +45,7 @@ class VerificationAgent:
             result = call_llm(prompt, config=config).strip()
             verified = result.upper().startswith("VERIFIED")
             issues = "" if verified else result
-            logger.debug("Verification result: %s", result[:80])
             tokens = self._count_tokens(prompt) + self._count_tokens(result)
             return {"verified": verified, "issues": issues, "tokens": tokens}
         except Exception as exc:
-            logger.warning("Verification LLM call failed (%s); passing answer through.", exc)
             return {"verified": True, "issues": "", "tokens": 0}

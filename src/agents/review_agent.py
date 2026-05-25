@@ -1,8 +1,4 @@
-import logging
-
 from ..util.utilities import call_llm
-
-logger = logging.getLogger(__name__)
 
 _MAX_HISTORY_TURNS = 4
 
@@ -62,7 +58,6 @@ class ReviewAgent:
             tokens = self._count_tokens(prompt) + self._count_tokens(final_answer)
             return final_answer, tokens
         except Exception as exc:
-            logger.warning("Review LLM call failed (%s); returning draft.", exc)
             return draft, self._count_tokens(prompt) + self._count_tokens(draft)
 
     def _format_history(self, history: list) -> str:

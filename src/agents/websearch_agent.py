@@ -1,6 +1,4 @@
-import logging
 
-logger = logging.getLogger(__name__)
 
 
 class WebSearchAgent:
@@ -37,5 +35,4 @@ class WebSearchAgent:
                 if r.get("content")
             ]
         except Exception as exc:
-            logger.error("Tavily search execution failed: %s", exc)
             return []

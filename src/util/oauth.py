@@ -1,8 +1,5 @@
-import logging
 import requests
 from urllib.parse import urlencode
-
-logger = logging.getLogger(__name__)
 
 
 class OAuthClient:
@@ -14,6 +11,12 @@ class OAuthClient:
         self.provider = provider.lower()
         self.client_id = client_id
         self.client_secret = client_secret
+        if not redirect_uri:
+            try:
+                import streamlit as st
+                redirect_uri = st.context.url.rstrip("/")
+            except Exception:
+                pass
         self.redirect_uri = redirect_uri or "http://localhost:8501"
 
     def get_authorization_url(self, state: str = "state123") -> str:

@@ -1,8 +1,5 @@
-import logging
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
-logger = logging.getLogger(__name__)
 
 
 class RetrievalAgent:
@@ -19,7 +16,6 @@ class RetrievalAgent:
         self.chunks = []
         self.vectorizer = None
         self.matrix = None
-        logger.info("RetrievalAgent initialized with TF-IDF caching.")
 
     @property
     def count(self) -> int:
@@ -53,7 +49,6 @@ class RetrievalAgent:
             query_vector = self.vectorizer.transform([query])
             scores = cosine_similarity(query_vector, self.matrix).flatten()
         except Exception as exc:
-            logger.error("TF-IDF retrieval similarity calculation failed: %s", exc)
             return [], 0.0
 
         top_indices = scores.argsort()[::-1][: self.top_k]
@@ -64,7 +59,6 @@ class RetrievalAgent:
             results.append(entry)
 
         max_score = float(scores.max()) if len(scores) > 0 else 0.0
-        logger.debug("TF-IDF retrieval returned %d results. Max score: %.3f", len(results), max_score)
         return results, max_score
 
     def clear(self) -> None:
@@ -72,7 +66,6 @@ class RetrievalAgent:
         self.chunks = []
         self.vectorizer = None
         self.matrix = None
-        logger.debug("RetrievalAgent database cleared.")
 
     def _rebuild_index(self) -> None:
         """Fits the TF-IDF vectorizer and transforms all document chunks."""
@@ -85,9 +78,7 @@ class RetrievalAgent:
         try:
             self.vectorizer = TfidfVectorizer(stop_words="english", max_features=10000)
             self.matrix = self.vectorizer.fit_transform(texts)
-            logger.info("TF-IDF index rebuilt successfully with %d chunks.", len(self.chunks))
         except Exception as exc:
-            logger.error("Failed to build TF-IDF index: %s", exc)
             self.matrix = None
             self.vectorizer = None
 
@@ -100,7 +91,6 @@ class RetrievalAgent:
             q_vec = vec.transform([query])
             scores = cosine_similarity(q_vec, matrix).flatten()
         except Exception as exc:
-            logger.error("On-demand TF-IDF retrieval failed: %s", exc)
             return [], 0.0
 
         top_indices = scores.argsort()[::-1][: self.top_k]

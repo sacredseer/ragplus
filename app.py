@@ -1,4 +1,3 @@
-import logging
 import os
 import streamlit as st
 
@@ -8,13 +7,12 @@ from src.util.oauth import OAuthClient
 
 DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2378909C'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>"
 
-os.makedirs("logs", exist_ok=True)
-logging.basicConfig(
-    filename="logs/app.log",
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-logger = logging.getLogger(__name__)
+try:
+    base_url = st.context.url.rstrip("/")
+    if not base_url:
+        base_url = "http://localhost:8501"
+except Exception:
+    base_url = "http://localhost:8501"
 
 st.set_page_config(
     page_title="Document Buddy",
@@ -79,7 +77,7 @@ if code:
             provider=provider,
             client_id=client_id,
             client_secret=client_secret,
-            redirect_uri="http://localhost:8501"
+            redirect_uri=base_url
         )
         user_info = client.exchange_code_for_user(code)
         st.session_state.user = user_info
@@ -91,12 +89,12 @@ if code:
 if "user" not in st.session_state:
     google_client_id = st.session_state.get("google_client_id")
     google_client_secret = st.session_state.get("google_client_secret")
-    google_client = OAuthClient(provider="google", client_id=google_client_id, client_secret=google_client_secret)
+    google_client = OAuthClient(provider="google", client_id=google_client_id, client_secret=google_client_secret, redirect_uri=base_url)
     google_auth_url = google_client.get_authorization_url()
 
     github_client_id = st.session_state.get("github_client_id")
     github_client_secret = st.session_state.get("github_client_secret")
-    github_client = OAuthClient(provider="github", client_id=github_client_id, client_secret=github_client_secret)
+    github_client = OAuthClient(provider="github", client_id=github_client_id, client_secret=github_client_secret, redirect_uri=base_url)
     github_auth_url = github_client.get_authorization_url()
 
     st.markdown(
@@ -117,7 +115,7 @@ if "user" not in st.session_state:
                         Sign In with GitHub
                     </div>
                 </a>
-                <a href="http://localhost:8501/?code=mock_code_dev_user&state=mock_state" target="_self" style="text-decoration: none;">
+                <a href="{base_url}/?code=mock_code_dev_user&state=mock_state" target="_self" style="text-decoration: none;">
                     <div class="social-login-btn dev-btn">
                         <svg class="btn-icon" viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg" style="margin-right: 12px; fill: currentColor; vertical-align: middle;"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
                         Developer Login
@@ -174,19 +172,15 @@ with st.sidebar:
                         indexed = st.session_state.orchestrator._retrieval.index(chunks)
                         st.session_state.document_chunks.extend(chunks)
                         st.session_state.uploaded_names.add(uf.name)
-                        logger.info("Processed '%s': %d chunks indexed.", uf.name, len(chunks))
                         st.session_state.banners.append({
                             "type": "success", 
                             "text": f"Document '{uf.name}' processed successfully. {len(chunks)} chunks indexed."
                         })
                 except ValueError as exc:
-                    logger.warning("Upload error for '%s': %s", uf.name, exc)
                     st.session_state.banners.append({"type": "error", "text": f"Could not read '{uf.name}': {exc}"})
                 except RuntimeError as exc:
-                    logger.error("Processing error for '%s': %s", uf.name, exc)
-                    st.session_state.banners.append({"type": "error", "text": f"Processing failed for '{uf.name}'. Check logs for details."})
+                    st.session_state.banners.append({"type": "error", "text": f"Processing failed for '{uf.name}'."})
                 except Exception as exc:
-                    logger.error("Unexpected error for '%s': %s", uf.name, exc)
                     st.session_state.banners.append({"type": "error", "text": f"Unexpected error processing '{uf.name}'."})
 
     if st.session_state.uploaded_names:
@@ -358,7 +352,6 @@ if user_input:
             if answer_data["from_web"]:
                 st.session_state.banners.append({"type": "info", "text": "Answer sourced from web search."})
         except RuntimeError as exc:
-            logger.error("Pipeline run error: %s", exc)
             st.session_state.banners.append({"type": "error", "text": f"Error: {exc}"})
             answer_data = {
                 "answer": str(exc),
@@ -367,8 +360,7 @@ if user_input:
                 "from_web": False,
             }
         except Exception as exc:
-            logger.error("Unexpected pipeline execution error: %s", exc, exc_info=True)
-            st.session_state.banners.append({"type": "error", "text": "An unexpected error occurred. Check logs for details."})
+            st.session_state.banners.append({"type": "error", "text": "An unexpected error occurred."})
             answer_data = {
                 "answer": "An unexpected error occurred. Please try again.",
                 "sources": [],

@@ -1,12 +1,9 @@
 import io
-import logging
 
 import fitz
 import pandas as pd
 
 from ..util.utilities import chunk_text
-
-logger = logging.getLogger(__name__)
 
 
 class DocumentAgent:
@@ -18,7 +15,6 @@ class DocumentAgent:
         try:
             text = self._extract_text(file_name, file_bytes, ext)
         except Exception as exc:
-            logger.error("Failed text extraction from file %s: %s", file_name, exc)
             raise ValueError(f"Could not read content from '{file_name}': {exc}") from exc
 
         if not text.strip():
@@ -38,7 +34,6 @@ class DocumentAgent:
         if ext in ("txt", "md", "markdown"):
             return file_bytes.decode("utf-8", errors="ignore")
         
-        logger.warning("Unknown file extension '%s' for %s. Attempting UTF-8 fallback.", ext, file_name)
         return file_bytes.decode("utf-8", errors="ignore")
 
     def _parse_pdf(self, file_bytes: bytes) -> str:
